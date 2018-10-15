@@ -326,7 +326,6 @@ namespace DDS {
 
 #else //TAF_USES_DDSCORBA
 
-#include "dds_dcps.h"
 
 namespace DDS {
 

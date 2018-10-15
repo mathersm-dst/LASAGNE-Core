@@ -80,6 +80,7 @@ namespace TAFDDS
         ~DDS_Topic_factory(void);
 
         _handle_type    create_topic(const DDS_DomainParticipant_handle&, const DDS_Type_handle&, DDS::String_ptr topic_name);
+        _handle_type    create_topic(const DDS_DomainParticipant_handle&, const DDS_Type_handle&, DDS::String_ptr topic_name, const TAFDDS::TopicQos& qos);
     };
 
     typedef DDS_Topic_factory::_handle_type     DDS_Topic_handle;
@@ -99,6 +100,7 @@ namespace TAFDDS
         ~DDS_DomainParticipant_holder(void);
 
         DDS_Topic_handle    create_topic(DDS::String_ptr topic_name, const DDS::TypeSupport_ref &type_ref);
+        DDS_Topic_handle    create_topic(DDS::String_ptr topic_name, const DDS::TypeSupport_ref &type_ref, const TAFDDS::TopicQos& qos);
 
         const DDS_Topic_factory&    getTopicFactory(void) const { return this->topicFactory_; }
         const DDS_Type_factory&     getTypeFactory(void) const  { return this->typeFactory_;  }
@@ -216,6 +218,7 @@ namespace TAFDDS
         DDS::String_ptr getTopicName(void) const;
 
         virtual DDS::ReturnCode_t   init(const DDS_DomainParticipant_handle&, DDS::String_ptr topic_name, DDS::String_ptr topic_type = 0);
+        virtual DDS::ReturnCode_t   init(const DDS_DomainParticipant_handle&, DDS::String_ptr topic_name, DDS::String_ptr topic_type, const TAFDDS::TopicQos& qos);
     };
 
     /******************* DDS_Subscriber *******************************************/
@@ -298,6 +301,7 @@ namespace TAFDDS
         virtual DDS::ReturnCode_t   publish(const _data_type&);
 
         virtual DDS::ReturnCode_t   init(const DDS_Publisher_handle&, const DDS_Topic_handle&);
+        virtual DDS::ReturnCode_t   init(const DDS_Publisher_handle&, const DDS_Topic_handle&, const TAFDDS::DataWriterQos& qos);
 
         virtual DDS::ReturnCode_t   getQos(DDS::DataWriterQos &qos) const;
         virtual DDS::StatusMask     getStatusMask(void) const;
@@ -354,6 +358,7 @@ namespace TAFDDS
         }
 
         virtual DDS::ReturnCode_t   init(const DDS_Subscriber_handle&, const DDS_Topic_handle&);
+        virtual DDS::ReturnCode_t   init(const DDS_Subscriber_handle&, const DDS_Topic_handle&, const TAFDDS::DataReaderQos&);
 
         virtual DDS::ReturnCode_t   getQos(DDS::DataReaderQos &qos) const;
         virtual DDS::StatusMask     getStatusMask(void) const;

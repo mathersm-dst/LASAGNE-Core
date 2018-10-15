@@ -51,6 +51,22 @@ namespace TAFDDS
         return DDS::RETCODE_OK;
     }
 
+    template < typename T_SUPPORT >
+    DDS::ReturnCode_t
+        DDS_Topic<T_SUPPORT>::init(const DDS_DomainParticipant_handle &participant, DDS::String_ptr topic_name, DDS::String_ptr type_name, const TAFDDS::TopicQos& qos)
+    {
+        if (participant == 0 || topic_name == 0) {
+            return DDS::RETCODE_ERROR;
+        }
+        else if ((this->out() = participant->create_topic(topic_name, new T_SUPPORT(type_name), qos)._retn()) == 0) {
+            ACE_ERROR_RETURN((LM_ERROR, ACE_TEXT("ERROR: DDS_Topic - Unable to create Topic [%C]\n"), topic_name), DDS::RETCODE_ERROR);
+        }
+
+        this->topic_name_.assign(DDS::String_ref((**this)->get_name()));
+
+        return DDS::RETCODE_OK;
+    }
+
     /******************* DDS_Publisher ********************************************/
 
     template <typename T_LISTENER>
@@ -124,6 +140,68 @@ namespace TAFDDS
 
         ACE_ERROR_RETURN((LM_ERROR, ACE_TEXT("ERROR: DDS_Writer - Unable to create DataWriter.\n")), r_code);
     }
+
+
+    template <typename T_TOPIC, typename T_LISTENER>
+    DDS::ReturnCode_t
+        DDS_Writer<T_TOPIC, T_LISTENER>::init(const DDS_Publisher_handle &publisher, const DDS_Topic_handle &topic, const TAFDDS::DataWriterQos& qos)
+    {
+        if (publisher == 0 || topic == 0) {
+            return DDS::RETCODE_BAD_PARAMETER;
+        }
+
+        DDS::ReturnCode_t   r_code;
+
+        // Assign the QoS
+#if defined(TAF_USES_NDDS)
+        this->qos_.availability = qos.availability;
+        this->qos_.batch = qos.batch;
+        this->qos_.encapsulation = qos.encapsulation;
+        this->qos_.multi_channel = qos.multi_channel;
+        this->qos_.property = qos.property;
+        this->qos_.protocol = qos.protocol;
+        this->qos_.publication_name = qos.publication_name;
+        this->qos_.publish_mode = qos.publish_mode;
+        this->qos_.reliability = qos.reliability;
+        this->qos_.resource_limits = qos.resource_limits;
+        this->qos_.service = qos.service;
+        this->qos_.topic_query_dispatch = qos.topic_query_dispatch;
+        this->qos_.transport_selection = qos.transport_selection;
+        this->qos_.type_support = qos.type_support;
+        this->qos_.unicast = qos.unicast;
+        this->qos_.writer_resource_limits = qos.writer_resource_limits;
+#endif // TAF_USES_NDDS
+        this->qos_.deadline = qos.deadline;
+        this->qos_.destination_order = qos.destination_order;
+        this->qos_.durability = qos.durability;
+        this->qos_.durability_service = qos.durability_service;
+        this->qos_.history = qos.history;
+        this->qos_.latency_budget = qos.latency_budget;
+        this->qos_.lifespan = qos.lifespan;
+        this->qos_.liveliness = qos.liveliness;
+        this->qos_.ownership = qos.ownership;
+        this->qos_.ownership_strength = qos.ownership_strength;
+        this->qos_.transport_priority = qos.transport_priority;
+        this->qos_.user_data = qos.user_data;
+        this->qos_.writer_data_lifecycle = qos.writer_data_lifecycle;
+        
+
+        try {
+
+            if ((r_code = this->getQos(this->qos_)) == DDS::RETCODE_OK) {
+                this->writer_ = _support_type::narrow(DDS::DataWriter_ref((*publisher)->create_datawriter(topic->handle_in(), this->qos_, this, this->getStatusMask())));
+
+                if (this->writer_) {
+                    this->publisher_ = publisher; this->topic_ = topic; return DDS::RETCODE_OK;
+                }
+
+                r_code = DDS::RETCODE_ERROR;
+            }
+        } DAF_CATCH_ALL{  /* Safe Guard UserCode from Exceptions */ }
+
+        ACE_ERROR_RETURN((LM_ERROR, ACE_TEXT("ERROR: DDS_Writer - Unable to create DataWriter.\n")), r_code);
+    }
+
 
     template <typename T_SUPPORT, typename T_LISTENER>
     DDS::ReturnCode_t
@@ -212,6 +290,60 @@ namespace TAFDDS
 
         ACE_ERROR_RETURN((LM_ERROR, ACE_TEXT("ERROR: DDS_Reader - Unable to create DataReader.\n")), r_code);
     }
+
+
+    template <typename T_TOPIC, typename T_LISTENER> DDS::ReturnCode_t
+        DDS_Reader<T_TOPIC, T_LISTENER>::init(const DDS_Subscriber_handle &subscriber, const DDS_Topic_handle &topic, const TAFDDS::DataReaderQos& qos)
+    {
+        if (subscriber == 0 || topic == 0) {
+            return DDS::RETCODE_BAD_PARAMETER;
+        }
+
+        DDS::ReturnCode_t   r_code;
+
+        // Assign the QoS
+#if defined(TAF_USES_NDDS)
+        this->qos_.availability = qos.availability;
+        this->qos_.encapsulation = qos.encapsulation;
+        this->qos_.multicast = qos.multicast;
+        this->qos_.property = qos.property;
+        this->qos_.protocol = qos.protocol;
+        this->qos_.reader_resource_limits = qos.reader_resource_limits;
+        this->qos_.service = qos.service;
+        this->qos_.subscription_name = qos.subscription_name;
+        this->qos_.transport_priority = qos.transport_priority;
+        this->qos_.transport_selection = qos.transport_selection;
+        this->qos_.type_consistency = qos.type_consistency;
+        this->qos_.type_support = qos.type_support;
+        this->qos_.unicast = qos.unicast;
+#endif // TAF_USES_NDDS
+
+        this->qos_.deadline = qos.deadline;
+        this->qos_.destination_order = qos.destination_order;
+        this->qos_.durability = qos.durability;
+        this->qos_.history = qos.history;
+        this->qos_.latency_budget = qos.latency_budget;
+        this->qos_.liveliness = qos.liveliness;
+        this->qos_.ownership = qos.ownership;
+        this->qos_.reader_data_lifecycle = qos.reader_data_lifecycle;
+        this->qos_.time_based_filter = qos.time_based_filter;
+        this->qos_.user_data = qos.user_data;
+
+
+        try {
+            if ((r_code = this->getQos(this->qos_)) == DDS::RETCODE_OK) {
+                this->reader_ = _support_type::narrow(DDS::DataReader_ref((*subscriber)->create_datareader(topic->handle_in(), this->qos_, this, this->getStatusMask())));
+
+                if (this->reader_) {
+                    this->subscriber_ = subscriber; this->topic_ = topic; return DDS::RETCODE_OK;
+                }
+
+                r_code = DDS::RETCODE_ERROR;
+            }
+        } DAF_CATCH_ALL{  /* Safe Guard UserCode from Exceptions */ }
+
+        ACE_ERROR_RETURN((LM_ERROR, ACE_TEXT("ERROR: DDS_Reader - Unable to create DataReader.\n")), r_code);
+        }
 
     template <typename T_TOPIC, typename T_LISTENER>
     DDS_Reader<T_TOPIC,T_LISTENER>::~DDS_Reader(void)

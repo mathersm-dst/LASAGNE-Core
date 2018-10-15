@@ -234,6 +234,12 @@ namespace TAFDDS
         return this->topicFactory_.create_topic(*this, this->typeFactory_.register_type(*this, type_ref), topic_name);
     }
 
+    DDS_Topic_handle
+    DDS_DomainParticipant_holder::create_topic(DDS::String_ptr topic_name, const DDS::TypeSupport_ref &type_ref, const TAFDDS::TopicQos& qos)
+    {
+        return this->topicFactory_.create_topic(*this, this->typeFactory_.register_type(*this, type_ref), topic_name, qos);
+    }
+
     /******************* DDS_TopicFactory  ******************************************/
 
     DDS_Topic_factory::~DDS_Topic_factory(void)
@@ -278,6 +284,37 @@ namespace TAFDDS
 
         return DDS_Topic_holder::_narrow(this->create_holder(val).in());
     }
+
+
+    DDS_Topic_handle
+    DDS_Topic_factory::create_topic(const DDS_DomainParticipant_handle &participant, const DDS_Type_handle &type, DDS::String_ptr topic_name, const TAFDDS::TopicQos& qos)
+    {
+        if (topic_name ? DAF_OS::strlen(topic_name) == 0 : true) {
+            DAF_THROW_EXCEPTION(DAF::IllegalArgumentException);
+        }
+
+        std::stringstream ss; ss << topic_name << '|' << (*type)->getTypename() << '|' << (*participant)->get_domain_id();
+
+        const key_type topic_key(key_type(hash_holder_key(ss.str())));
+
+        ACE_GUARD_REACTION(ACE_SYNCH_MUTEX, mon, *this, DAF_THROW_EXCEPTION(DAF::ResourceExhaustionException));
+
+        try {
+            return DDS_Topic_holder::_narrow(this->locate_holder(topic_key).in());
+        }
+        catch (const DAF::NotFoundException&) {}
+
+        DDS::Topic_ref  topic((*participant)->create_topic(topic_name, (*type)->getTypename(), qos, 0, DDS::STATUS_MASK_ALL));
+
+        if (topic == 0) {
+            DAF_THROW_EXCEPTION(DAF::ObjectNotExistException);
+        }
+
+        DDS_Topic_factory::value_type val(topic_key, new DDS_Topic_holder(*this, participant, topic, type));
+
+        return DDS_Topic_holder::_narrow(this->create_holder(val).in());
+    }
+
 
     DDS_Topic_holder::DDS_Topic_holder( DDS_Topic_factory &home_factory,
                                         const DDS_DomainParticipant_handle &participant,
